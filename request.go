@@ -11,12 +11,12 @@ import (
 type requestOption func(*request)
 
 type request struct {
-	query   url.Values
+	query   requestQuery
 	body    io.ReadCloser
 	headers http.Header
 }
 
-func withQuery(q url.Values) requestOption {
+func withQuery(q requestQuery) requestOption {
 	return func(r *request) {
 		r.query = q
 	}
@@ -34,7 +34,7 @@ func withHeaders(h http.Header) requestOption {
 	}
 }
 
-func (c *Client) do(ctx context.Context, obj any, method string, opts ...requestOption) error {
+func (c *Client) do(ctx context.Context, obj any, method, op string, opts ...requestOption) error {
 	r := &request{}
 
 	for _, o := range opts {
@@ -50,15 +50,18 @@ func (c *Client) do(ctx context.Context, obj any, method string, opts ...request
 		req.Header = r.headers.Clone()
 	}
 
+	var q url.Values
 	if r.query != nil {
-		r.query.Set("api_key", c.apiKey)
-		r.query.Set("format", "json")
-
-		req.URL.RawQuery = r.query.Encode()
-	} else {
-		req.URL.Query().Set("api_key", c.apiKey)
-		req.URL.Query().Set("format", "json")
+		q, err = r.query.Values()
+		if err != nil {
+			return err
+		}
 	}
+
+	q.Set("method", op)
+	q.Set("api_key", c.apiKey)
+	q.Set("format", "json")
+	req.URL.RawQuery = q.Encode()
 
 	res, err := c.cli.Do(req)
 	if err != nil {

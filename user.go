@@ -3,33 +3,20 @@ package lastfm
 import (
 	"context"
 	"net/http"
-	"net/url"
-	"strconv"
-)
-
-type UserPeriod string
-
-const (
-	UserPeriodOverall = "overall"
-	UserPeriod7Day    = "7day"
-	UserPeriod1Month  = "1month"
-	UserPeriod3Month  = "3month"
-	UserPeriod6Month  = "6month"
-	UserPeriod12onth  = "12month"
 )
 
 type getUserInfo struct {
 	User *UserInfo `json:"user"`
 }
 
-// UserInfo is a last.fm user's info.
+// UserInfo is a user's info sent by the API.
 type UserInfo struct {
 	Name        string   `json:"name"`
 	Age         int      `json:"age,string"`
 	Subscriber  int      `json:"subscriber,string"`
 	RealName    string   `json:"realname"`
 	Bootstrap   string   `json:"bootstrap"`
-	Playcount   int      `json:"playcount,string"`
+	PlayCount   int      `json:"playcount,string"`
 	ArtistCount int      `json:"artist_count,string"`
 	Playlists   int      `json:"playlists,string"`
 	TrackCount  int      `json:"track_count,string"`
@@ -45,15 +32,11 @@ type UserInfo struct {
 	Type    string `json:"type"`
 }
 
-// UserInfo retrieves a user's info.
-func (c *Client) UserInfo(ctx context.Context, user string) (*UserInfo, error) {
+// UserInfo fetches a user's info.
+func (c *Client) UserInfo(ctx context.Context, query *UserQuery) (*UserInfo, error) {
 	var uf *getUserInfo
 
-	q := url.Values{}
-	q.Set("method", "user.getinfo")
-	q.Set("user", user)
-
-	err := c.do(ctx, &uf, http.MethodGet, withQuery(q))
+	err := c.do(ctx, &uf, http.MethodGet, "user.getinfo", withQuery(query))
 	if err != nil {
 		return nil, err
 	}
@@ -61,18 +44,8 @@ func (c *Client) UserInfo(ctx context.Context, user string) (*UserInfo, error) {
 	return uf.User, nil
 }
 
-type topUserTracks struct {
-	TopTracks *TopUserTracks `json:"toptracks"`
-}
-
-// TopUserTracks is a user's top tracks for a period.
-type TopUserTracks struct {
-	Tracks []*UserTrack       `json:"track"`
-	Meta   *TopUserTracksMeta `json:"@attr"`
-}
-
-// TopUserTracksMeta is the meta information returned with a user.getTopTracks query.
-type TopUserTracksMeta struct {
+// UserMeta is a meta information about a request sent with some user endpoints.
+type UserMeta struct {
 	User       string `json:"user"`
 	TotalPages int    `json:"totalPages,string"`
 	Page       int    `json:"page,string"`
@@ -80,56 +53,85 @@ type TopUserTracksMeta struct {
 	Total      int    `json:"total,string"`
 }
 
-// UserTrack represents a single track a user has listened to.
-type UserTrack struct {
-	Streamable struct {
-		Fulltrack Bool   `json:"fulltrack"`
-		Text      string `json:"text"`
-	} `json:"streamable"`
-	MBID   string   `json:"mbid"`
-	Name   string   `json:"name"`
-	Image  []*Image `json:"image"`
+type getUserRecentTracks struct {
+	RecentTracks *UserRecentTracks `json:"recenttracks"`
+}
+
+type UserRecentTracks struct {
+	Tracks []*UserRecentTrack `json:"track"`
+	Meta   *UserMeta          `json:"@attr"`
+}
+
+// UserRecentTrack represents a track recently listened to by a user.
+type UserRecentTrack struct {
+	Artist struct {
+		MBID string `json:"mbid"`
+		Name string `json:"#text"`
+	} `json:"artist"`
+	Album struct {
+		MBID string `json:"mbid"`
+		Name string `json:"#text"`
+	} `json:"album"`
+	Streamable Bool     `json:"streamable"`
+	Image      []*Image `json:"image"`
+	MBID       string   `json:"mbid"`
+	Name       string   `json:"name"`
+	URL        string   `json:"url"`
+	Date       struct {
+		Time Time `json:"uts"`
+	}
+	Meta struct {
+		NowPlaying Bool `json:"nowplaying"`
+	} `json:"@attr,omitempty"`
+}
+
+// UserRecentTracks fetches the tracks a user has most recently listened to.
+func (c *Client) UserRecentTracks(ctx context.Context, query *UserQuery) (*UserRecentTracks, error) {
+	var ut *getUserRecentTracks
+
+	err := c.do(ctx, &ut, http.MethodGet, "user.getrecenttracks", withQuery(query))
+	if err != nil {
+		return nil, err
+	}
+
+	return ut.RecentTracks, nil
+}
+
+type getUserTopAlbums struct {
+	Albums *UserTopAlbums `json:"topalbums"`
+}
+
+// UserTopAlbums is a user's top albums.
+type UserTopAlbums struct {
+	Albums []*UserTopAlbum `json:"album"`
+	Meta   *UserMeta       `json:"@attr"`
+}
+
+// UserTopAlbum represents a top album for a user.
+type UserTopAlbum struct {
 	Artist struct {
 		URL  string `json:"url"`
 		Name string `json:"name"`
 		MBID string `json:"mbid"`
 	} `json:"artist"`
-	URL       string `json:"url"`
-	Duration  int    `json:"duration,string"`
-	Playcount int    `json:"playcount,string"`
+	Image     []*Image `json:"image"`
+	MBID      string   `json:"mbid"`
+	URL       string   `json:"url"`
+	PlayCount int      `json:"playcount,string"`
+	Name      string   `json:"name"`
 	Meta      struct {
 		Rank int `json:"rank,string"`
 	} `json:"@attr"`
 }
 
-// TopUserTracks retrieves a user's top tracks for a period.
-func (c *Client) TopUserTracks(ctx context.Context, user string, period UserPeriod, page, limit int) (*TopUserTracks, error) {
-	var ut *topUserTracks
+// UserTopAlbums fetches a user's top albums for a period.
+func (c *Client) UserTopAlbums(ctx context.Context, query *UserQuery) (*UserTopAlbums, error) {
+	var ut *getUserTopAlbums
 
-	q := url.Values{}
-	q.Set("method", "user.gettoptracks")
-	q.Set("user", user)
-
-	if page > 0 {
-		pageStr := strconv.FormatInt(int64(page), 10)
-
-		q.Set("page", pageStr)
-	}
-
-	if limit > 0 {
-		limitStr := strconv.FormatInt(int64(limit), 10)
-
-		q.Set("limit", limitStr)
-	}
-
-	if period != "" {
-		q.Set("period", string(period))
-	}
-
-	err := c.do(ctx, &ut, http.MethodGet, withQuery(q))
+	err := c.do(ctx, &ut, http.MethodGet, "user.gettopalbums", withQuery(query))
 	if err != nil {
 		return nil, err
 	}
 
-	return ut.TopTracks, nil
+	return ut.Albums, nil
 }

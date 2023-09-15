@@ -19,7 +19,9 @@ func TestLastFM(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("TestUser", func(t *testing.T) {
-		user, err := c.UserInfo(ctx, "holedaemon")
+		user, err := c.UserInfo(ctx, &UserQuery{
+			User: "holedaemon",
+		})
 		assert.NilError(t, err, "getting user info")
 
 		assert.Assert(t, user.Name == "holedaemon", "username is wrong")
@@ -27,19 +29,22 @@ func TestLastFM(t *testing.T) {
 		t.Logf("user name is %s\n", user.Name)
 		t.Logf("user was created at %s\n", user.Registered.UnixTime.Time().Format(time.RFC3339))
 
-		topTracks, err := c.TopUserTracks(ctx, user.Name, UserPeriodOverall, 0, 50)
-		assert.NilError(t, err, "getting top tracks for user")
+		recentTracks, err := c.UserRecentTracks(ctx, &UserQuery{
+			User: "holedaemon",
+		})
+		assert.NilError(t, err, "getting recent tracks")
+		assert.Assert(t, len(recentTracks.Tracks) > 0, "recent tracks empty")
 
-		assert.Assert(t, len(topTracks.Tracks) > 0, "top user tracks empty")
+		t.Logf("last track: %s", recentTracks.Tracks[0].Name)
 
-		t.Logf("top track for %s: %s\n", user.Name, topTracks.Tracks[0].Name)
-		t.Logf("meta for top track: user: %s page: %d perpage: %d total: %d totalpages: %d\n",
-			topTracks.Meta.User,
-			topTracks.Meta.Page,
-			topTracks.Meta.PerPage,
-			topTracks.Meta.Total,
-			topTracks.Meta.TotalPages,
-		)
-		t.Logf("streamable?: %v\b", topTracks.Tracks[0].Streamable.Fulltrack)
+		topAlbums, err := c.UserTopAlbums(ctx, &UserQuery{
+			User:   "holedaemon",
+			Period: "7day",
+		})
+		assert.NilError(t, err, "getting top albums")
+
+		assert.Assert(t, len(topAlbums.Albums) > 0, "top albums is empty")
+
+		t.Logf("top album: %s", topAlbums.Albums[0].Name)
 	})
 }
