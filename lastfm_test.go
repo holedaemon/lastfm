@@ -27,7 +27,7 @@ func TestLastFM(t *testing.T) {
 		assert.Assert(t, user.Name == "holedaemon", "username is wrong")
 
 		t.Logf("user name is %s\n", user.Name)
-		t.Logf("user was created at %s\n", user.Registered.UnixTime.Time().Format(time.RFC3339))
+		t.Logf("user was created at %s\n", user.Registered.UnixTime.Format(time.RFC3339))
 
 		recentTracks, err := c.UserRecentTracks(ctx, &UserQuery{
 			User: "holedaemon",

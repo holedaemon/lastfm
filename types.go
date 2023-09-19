@@ -8,7 +8,9 @@ import (
 )
 
 // Time is a timestamp sent by the API.
-type Time time.Time
+type Time struct {
+	time.Time
+}
 
 func (t *Time) UnmarshalJSON(v []byte) error {
 	str := strings.Trim(string(v), `"`)
@@ -17,17 +19,17 @@ func (t *Time) UnmarshalJSON(v []byte) error {
 		return err
 	}
 
-	*t = Time(time.Unix(i, 0))
+	t.Time = time.Unix(i, 0)
 	return nil
 }
 
 func (t Time) MarshalJSON() ([]byte, error) {
-	ts := strconv.FormatInt(t.Time().Unix(), 10)
-	return []byte(`"` + ts + `"`), nil
-}
+	if t.IsZero() {
+		return []byte(`"0"`), nil
+	}
 
-func (t Time) Time() time.Time {
-	return time.Time(t)
+	ts := strconv.FormatInt(t.Time.Unix(), 10)
+	return []byte(`"` + ts + `"`), nil
 }
 
 // Bool is a boolean sent by the API.
