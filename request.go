@@ -50,6 +50,8 @@ func (c *Client) do(ctx context.Context, obj any, method, op string, opts ...req
 		req.Header = r.headers.Clone()
 	}
 
+	req.Header.Set("User-Agent", c.userAgent)
+
 	var q url.Values
 	if r.query != nil {
 		q, err = r.query.Values()

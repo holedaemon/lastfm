@@ -5,6 +5,9 @@ const (
 	version = "2.0"
 
 	baseURL = root + "/" + version + "/"
+
+	libVersion   = "0"
+	libUserAgent = "lastfm/v" + libVersion + " (https://github.com/holedaemon/lastfm)"
 )
 
 // Image represents an image sent by the API.
