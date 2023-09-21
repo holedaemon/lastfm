@@ -11,12 +11,6 @@ type requestQuery interface {
 	Values() (url.Values, error)
 }
 
-type baseQuery struct{}
-
-func (q *baseQuery) Values() (url.Values, error) {
-	return querystring.Values(q)
-}
-
 // UserQuery is used to configure a request to the users endpoint.
 type UserQuery struct {
 	// Every user request
